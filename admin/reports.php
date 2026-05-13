@@ -8,53 +8,81 @@ if (!isset($_SESSION['admin'])) {
 }
 
 /* =========================
-   📅 FILTER (Daily / Monthly)
+   FILTER SYSTEM
 ========================= */
-$type = $_GET['type'] ?? 'monthly';
+$type = $_GET['type'] ?? 'daily';
 $search = $_GET['search'] ?? '';
-
 $date_today = date("Y-m-d");
-$month = date("Y-m");
+
+// ✅ NEW: Month selector
+$selectedMonth = $_GET['month'] ?? date("Y-m");
 
 /* =========================
-   📌 CONDITION BUILDER
+   WHERE BUILDER
 ========================= */
-$where = "";
+$where = "1=1";
 
+// DAILY
 if ($type == 'daily') {
-    $where .= "DATE(appointment_date) = '$date_today'";
-} else {
-    $where .= "DATE_FORMAT(appointment_date, '%Y-%m') = '$month'";
+    $where .= " AND DATE(appointment_date) = '$date_today'";
 }
 
+// MONTHLY (FIXED)
+else {
+    $start = $selectedMonth . "-01";
+    $end = date("Y-m-t", strtotime($start));
+
+    $where .= " AND appointment_date BETWEEN '$start' AND '$end'";
+}
+
+// SEARCH
 if (!empty($search)) {
     $where .= " AND (customer_name LIKE '%$search%' 
                 OR appointment_date LIKE '%$search%')";
 }
 
 /* =========================
-   💰 REVENUE
+   REVENUE (Approved only)
 ========================= */
 $revenue = $conn->query("
     SELECT SUM(services.price) AS total
     FROM appointments
     JOIN services ON appointments.service_id = services.id
-    WHERE $where
-")->fetch_assoc()['total'];
-
-$revenue = $revenue ? $revenue : 0;
+    WHERE $where AND appointments.status='Approved'
+")->fetch_assoc()['total'] ?? 0;
 
 /* =========================
-   📊 BOOKINGS COUNT
+   BOOKINGS COUNT
 ========================= */
 $bookings = $conn->query("
     SELECT COUNT(*) AS total
     FROM appointments
     WHERE $where
-")->fetch_assoc()['total'];
+")->fetch_assoc()['total'] ?? 0;
 
 /* =========================
-   📋 FETCH DATA
+   DAILY STATUS
+========================= */
+$dailyApproved = $conn->query("
+    SELECT COUNT(*) as total 
+    FROM appointments 
+    WHERE DATE(appointment_date)='$date_today' AND status='Approved'
+")->fetch_assoc()['total'] ?? 0;
+
+$dailyCancelled = $conn->query("
+    SELECT COUNT(*) as total 
+    FROM appointments 
+    WHERE DATE(appointment_date)='$date_today' AND status='Cancelled'
+")->fetch_assoc()['total'] ?? 0;
+
+$dailyPending = $conn->query("
+    SELECT COUNT(*) as total 
+    FROM appointments 
+    WHERE DATE(appointment_date)='$date_today' AND status='Pending'
+")->fetch_assoc()['total'] ?? 0;
+
+/* =========================
+   DATA
 ========================= */
 $data = $conn->query("
     SELECT appointments.*, services.service_name, services.price
@@ -63,54 +91,40 @@ $data = $conn->query("
     WHERE $where
     ORDER BY appointment_date DESC
 ");
-
-/* =========================
-   🧹 CLEAR REPORTS
-========================= */
-if (isset($_GET['clear'])) {
-    $conn->query("DELETE FROM appointments");
-    header("Location: reports.php");
-    exit();
-}
 ?>
 
 <!DOCTYPE html>
 <html>
 <head>
 <title>Reports</title>
+
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
 <style>
-/* =========================
-   BACKGROUND IMAGE
-========================= */
 body {
-    margin: 0;
-    padding: 0;
-    font-family: Arial, sans-serif;
-
-    background: url('../assets/img/bg.jpg') no-repeat center center fixed;
-    background-size: cover;
+    margin:0;
+    padding:0;
+    font-family:Arial;
+    background:url('../assets/img/bg.jpg') no-repeat center center fixed;
+    background-size:cover;
 }
 
-/* DARK OVERLAY */
 .overlay {
-    background: rgba(0,0,0,0.65);
-    min-height: 100vh;
-    padding: 30px;
+    background:rgba(0,0,0,0.65);
+    min-height:100vh;
+    padding:30px;
 }
 
-/* GLASS CONTAINER */
 .container-box {
-    background: rgba(255,255,255,0.92);
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    background:rgba(255,255,255,0.95);
+    padding:20px;
+    border-radius:12px;
 }
 
-/* CARDS CLEAN LOOK */
-.card {
-    border-radius: 12px;
+.report-card {
+    padding:15px;
+    border-radius:10px;
+    color:white;
 }
 </style>
 
@@ -119,97 +133,140 @@ body {
 <body>
 
 <div class="overlay">
+<div class="container container-box">
 
-<div class="container container-box mt-4">
+<h3>📊 Reports Dashboard</h3>
 
-<h3>📊 Reports</h3>
+<a href="dashboard.php" class="btn btn-dark mb-3">
+    ⬅ Back to Dashboard
+</a>
 
 <!-- FILTER -->
 <form method="GET" class="row mb-3">
 
     <div class="col-md-3">
         <select name="type" class="form-control">
-            <option value="monthly" <?= $type == 'monthly' ? 'selected' : '' ?>>Monthly</option>
-            <option value="daily" <?= $type == 'daily' ? 'selected' : '' ?>>Daily</option>
+            <option value="daily" <?= $type=='daily'?'selected':'' ?>>Daily</option>
+            <option value="monthly" <?= $type=='monthly'?'selected':'' ?>>Monthly</option>
         </select>
     </div>
 
-    <div class="col-md-5">
-        <input type="text" name="search" class="form-control"
-               placeholder="Search name or date..."
-               value="<?= $search ?>">
+    <!-- ✅ NEW MONTH PICKER -->
+    <div class="col-md-3">
+        <input type="month" name="month" class="form-control"
+               value="<?= $selectedMonth ?>">
     </div>
 
-    <div class="col-md-4">
+    <div class="col-md-3">
+        <input type="text" name="search" class="form-control"
+               placeholder="Search name or date..."
+               value="<?= htmlspecialchars($search) ?>">
+    </div>
+
+    <div class="col-md-3">
         <button class="btn btn-primary">Filter</button>
         <a href="reports.php" class="btn btn-secondary">Reset</a>
     </div>
 
 </form>
 
-<!-- BUTTONS -->
-<div class="mb-3">
-    <a href="dashboard.php" class="btn btn-dark">Dashboard</a>
+<!-- DAILY REPORT -->
+<?php if ($type == 'daily'): ?>
+<div class="card p-3 mb-4">
 
-    <a href="reports.php?clear=1"
-       onclick="return confirm('Are you sure you want to clear ALL reports?')"
-       class="btn btn-danger">
-       Clear Reports
-    </a>
-</div>
+<h4>📅 Daily Report (<?= $date_today ?>)</h4>
 
-<div class="row">
+<div class="row text-center">
 
-<!-- REVENUE -->
-<div class="col-md-6">
-    <div class="card p-4 text-center shadow">
-        <h5><?= $type == 'daily' ? 'Daily' : 'Monthly' ?> Revenue</h5>
-        <h2 class="text-success">₱<?= $revenue ?></h2>
+    <div class="col-md-4">
+        <div class="report-card bg-success">
+            <h6>Approved</h6>
+            <h3><?= $dailyApproved ?></h3>
+        </div>
     </div>
+
+    <div class="col-md-4">
+        <div class="report-card bg-danger">
+            <h6>Cancelled</h6>
+            <h3><?= $dailyCancelled ?></h3>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="report-card bg-warning text-dark">
+            <h6>Pending</h6>
+            <h3><?= $dailyPending ?></h3>
+        </div>
+    </div>
+
 </div>
 
-<!-- BOOKINGS -->
-<div class="col-md-6">
-    <div class="card p-4 text-center shadow">
-        <h5><?= $type == 'daily' ? 'Daily' : 'Monthly' ?> Bookings</h5>
-        <h2 class="text-primary"><?= $bookings ?></h2>
-    </div>
 </div>
+<?php endif; ?>
+
+<!-- SUMMARY -->
+<div class="row mb-3">
+
+    <div class="col-md-6">
+        <div class="card p-3 text-center">
+            <h5><?= ucfirst($type) ?> Bookings</h5>
+            <h3><?= $bookings ?></h3>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card p-3 text-center">
+            <h5><?= ucfirst($type) ?> Revenue</h5>
+            <h3 class="text-success">₱<?= number_format($revenue,2) ?></h3>
+        </div>
+    </div>
 
 </div>
 
 <!-- TABLE -->
-<div class="card mt-4 p-3 shadow">
-    <h5>📋 Appointment Records</h5>
+<div class="card p-3">
 
-    <table class="table table-bordered mt-3 bg-white">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Service</th>
-                <th>Price</th>
-                <th>Date</th>
-            </tr>
-        </thead>
-        <tbody>
+<h5>📋 Appointment Records</h5>
 
-        <?php if($data->num_rows > 0): ?>
-            <?php while($row = $data->fetch_assoc()): ?>
-                <tr>
-                    <td><?= $row['customer_name'] ?></td>
-                    <td><?= $row['service_name'] ?></td>
-                    <td>₱<?= $row['price'] ?></td>
-                    <td><?= $row['appointment_date'] ?></td>
-                </tr>
-            <?php endwhile; ?>
-        <?php else: ?>
-            <tr>
-                <td colspan="4" class="text-center">No data found</td>
-            </tr>
-        <?php endif; ?>
+<table class="table table-bordered mt-3">
+<thead>
+<tr>
+    <th>Name</th>
+    <th>Service</th>
+    <th>Price</th>
+    <th>Date</th>
+    <th>Status</th>
+</tr>
+</thead>
 
-        </tbody>
-    </table>
+<tbody>
+
+<?php if ($data->num_rows > 0): ?>
+    <?php while($row = $data->fetch_assoc()): ?>
+    <tr>
+        <td><?= $row['customer_name'] ?></td>
+        <td><?= $row['service_name'] ?></td>
+        <td>₱<?= number_format($row['price'],2) ?></td>
+        <td><?= $row['appointment_date'] ?></td>
+        <td>
+            <span class="badge bg-<?=
+                $row['status']=='Approved'?'success':
+                ($row['status']=='Cancelled'?'danger':'warning')
+            ?>">
+                <?= $row['status'] ?>
+            </span>
+        </td>
+    </tr>
+    <?php endwhile; ?>
+<?php else: ?>
+<tr>
+    <td colspan="5" class="text-center">No data found</td>
+</tr>
+<?php endif; ?>
+
+</tbody>
+</table>
+
 </div>
 
 </div>

@@ -40,8 +40,9 @@ if (isset($_POST['login'])) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
+
 /* RESET */
-* {
+*{
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -49,7 +50,7 @@ if (isset($_POST['login'])) {
 }
 
 /* BACKGROUND */
-body {
+body{
     height: 100vh;
 
     background: url('assets/img/bg.jpg') no-repeat center center fixed;
@@ -63,7 +64,7 @@ body {
 }
 
 /* DARK OVERLAY */
-body::before {
+body::before{
     content: "";
     position: absolute;
     width: 100%;
@@ -74,7 +75,7 @@ body::before {
 }
 
 /* LOGIN CARD */
-.card {
+.card{
     position: relative;
     z-index: 2;
 
@@ -93,7 +94,7 @@ body::before {
 }
 
 /* TITLE */
-h3 {
+h3{
     text-align: center;
     margin-bottom: 20px;
     font-size: 26px;
@@ -101,7 +102,7 @@ h3 {
 }
 
 /* INPUTS */
-input {
+input{
     width: 100%;
     padding: 12px;
     margin-bottom: 15px;
@@ -112,8 +113,28 @@ input {
     outline: none;
 }
 
+/* PASSWORD TOGGLE */
+.password-box{
+    position: relative;
+}
+
+.password-box input{
+    padding-right: 45px;
+}
+
+.toggle-password{
+    position: absolute;
+    right: 15px;
+    top: 38%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #555;
+    font-size: 18px;
+    user-select: none;
+}
+
 /* LOGIN BUTTON */
-.btn-login {
+.btn-login{
     width: 100%;
     padding: 12px;
 
@@ -129,13 +150,13 @@ input {
     transition: 0.3s;
 }
 
-.btn-login:hover {
+.btn-login:hover{
     background: #e60039;
     transform: scale(1.03);
 }
 
 /* BACK BUTTON */
-.btn-back {
+.btn-back{
     margin-top: 10px;
     width: 100%;
     padding: 12px;
@@ -151,12 +172,12 @@ input {
     text-align: center;
 }
 
-.btn-back:hover {
+.btn-back:hover{
     background: rgba(255,255,255,0.25);
 }
 
 /* ERROR */
-.alert {
+.alert{
     background: rgba(255,0,0,0.2);
     padding: 10px;
     border-radius: 8px;
@@ -166,13 +187,13 @@ input {
 }
 
 /* LOADER */
-.loader {
+.loader{
     display: none;
     text-align: center;
     margin-top: 10px;
 }
 
-.dot {
+.dot{
     height: 8px;
     width: 8px;
     margin: 0 2px;
@@ -182,31 +203,48 @@ input {
     animation: bounce 1.2s infinite ease-in-out;
 }
 
-.dot:nth-child(2) { animation-delay: 0.2s; }
-.dot:nth-child(3) { animation-delay: 0.4s; }
-
-@keyframes bounce {
-    0%, 80%, 100% { transform: scale(0); }
-    40% { transform: scale(1); }
+.dot:nth-child(2){
+    animation-delay: 0.2s;
 }
 
-@keyframes fadeIn {
-    from {opacity: 0; transform: translateY(20px);}
-    to {opacity: 1; transform: translateY(0);}
+.dot:nth-child(3){
+    animation-delay: 0.4s;
+}
+
+@keyframes bounce{
+    0%, 80%, 100%{
+        transform: scale(0);
+    }
+    40%{
+        transform: scale(1);
+    }
+}
+
+@keyframes fadeIn{
+    from{
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to{
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* LOGO */
-.logo {
+.logo{
     text-align: center;
     font-size: 20px;
     margin-bottom: 10px;
     color: white;
 }
 
-.logo span {
+.logo span{
     color: #ff4d6d;
     font-weight: bold;
 }
+
 </style>
 </head>
 
@@ -214,7 +252,9 @@ input {
 
 <div class="card">
 
-    <div class="logo">💇 <span>Glow Salon</span> Admin</div>
+    <div class="logo">
+        💇 <span>Glow Salon</span> Admin
+    </div>
 
     <h3>Admin Login</h3>
 
@@ -224,11 +264,32 @@ input {
 
     <form method="POST" onsubmit="showLoader()">
 
-        <input type="text" name="username" placeholder="Username" required>
+        <input 
+            type="text" 
+            name="username" 
+            placeholder="Username" 
+            required
+        >
 
-        <input type="password" name="password" placeholder="Password" required>
+        <div class="password-box">
 
-        <button type="submit" name="login" class="btn-login">Login</button>
+            <input 
+                type="password" 
+                id="password"
+                name="password" 
+                placeholder="Password" 
+                required
+            >
+
+            <span class="toggle-password" onclick="togglePassword()">
+                👁
+            </span>
+
+        </div>
+
+        <button type="submit" name="login" class="btn-login">
+            Login
+        </button>
 
         <div class="loader" id="loader">
             <div class="dot"></div>
@@ -238,14 +299,30 @@ input {
 
     </form>
 
-    <a href="index.php" class="btn-back">⬅ Back to Home</a>
+    <a href="index.php" class="btn-back">
+        ⬅ Back to Home
+    </a>
 
 </div>
 
 <script>
-function showLoader() {
+
+function showLoader(){
     document.getElementById("loader").style.display = "block";
 }
+
+function togglePassword(){
+
+    const password = document.getElementById("password");
+
+    if(password.type === "password"){
+        password.type = "text";
+    }else{
+        password.type = "password";
+    }
+
+}
+
 </script>
 
 </body>

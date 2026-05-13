@@ -13,10 +13,11 @@ if (isset($_POST['login'])) {
     $stmt = $conn->prepare("SELECT * FROM customers WHERE username=?");
     $stmt->bind_param("s", $username);
     $stmt->execute();
+
     $result = $stmt->get_result();
     $customer = $result->fetch_assoc();
 
-    // ✅ NO HASHING (plain password comparison)
+    // NO HASHING (plain password comparison)
     if ($customer && $customer['password'] == $password) {
 
         $_SESSION['user_id'] = $customer['id'];
@@ -39,8 +40,9 @@ if (isset($_POST['login'])) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
+
 /* RESET */
-* {
+*{
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -48,7 +50,7 @@ if (isset($_POST['login'])) {
 }
 
 /* BACKGROUND IMAGE */
-body {
+body{
     height: 100vh;
     background: url('assets/img/bg.jpg') no-repeat center center fixed;
     background-size: cover;
@@ -61,7 +63,7 @@ body {
 }
 
 /* DARK OVERLAY */
-body::before {
+body::before{
     content: "";
     position: absolute;
     width: 100%;
@@ -72,7 +74,7 @@ body::before {
 }
 
 /* LOGIN BOX */
-.login-box {
+.login-box{
     position: relative;
     z-index: 2;
 
@@ -90,7 +92,7 @@ body::before {
 }
 
 /* LOGO */
-.logo {
+.logo{
     font-size: 24px;
     font-weight: bold;
     color: #ff4d6d;
@@ -98,18 +100,18 @@ body::before {
 }
 
 /* TITLE */
-.login-box h2 {
+.login-box h2{
     margin-bottom: 5px;
 }
 
-.login-box p {
+.login-box p{
     font-size: 14px;
     color: #ddd;
     margin-bottom: 20px;
 }
 
 /* INPUTS */
-input {
+input{
     width: 100%;
     padding: 12px;
     margin: 10px 0;
@@ -120,8 +122,28 @@ input {
     outline: none;
 }
 
+/* PASSWORD TOGGLE */
+.password-box{
+    position: relative;
+}
+
+.password-box input{
+    padding-right: 45px;
+}
+
+.toggle-password{
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #555;
+    font-size: 18px;
+    user-select: none;
+}
+
 /* BUTTON */
-button {
+button{
     width: 100%;
     padding: 12px;
 
@@ -137,12 +159,12 @@ button {
     transition: 0.3s;
 }
 
-button:hover {
+button:hover{
     background: #e60039;
 }
 
 /* ERROR */
-.error {
+.error{
     background: rgba(255,0,0,0.2);
     color: #ffb3b3;
 
@@ -153,7 +175,7 @@ button:hover {
 }
 
 /* LINK */
-.back {
+.back{
     display: block;
     margin-top: 15px;
     color: #fff;
@@ -161,16 +183,17 @@ button:hover {
     font-size: 14px;
 }
 
-.back:hover {
+.back:hover{
     color: #ff4d6d;
 }
 
 /* MOBILE */
 @media(max-width: 400px){
-    .login-box {
+    .login-box{
         width: 90%;
     }
 }
+
 </style>
 </head>
 
@@ -179,7 +202,9 @@ button:hover {
 <div class="login-box">
 
     <div class="logo">💇 Glow Salon</div>
+
     <h2>Customer Login</h2>
+
     <p>Book your beauty appointment anytime</p>
 
     <?php if (!empty($error)): ?>
@@ -188,17 +213,56 @@ button:hover {
 
     <form method="POST">
 
-        <input type="text" name="username" placeholder="Username" required>
+        <input 
+            type="text" 
+            name="username" 
+            placeholder="Username" 
+            required
+        >
 
-        <input type="password" name="password" placeholder="Password" required>
+        <div class="password-box">
 
-        <button type="submit" name="login">Login</button>
+            <input 
+                type="password" 
+                id="password"
+                name="password" 
+                placeholder="Password" 
+                required
+            >
+
+            <span class="toggle-password" onclick="togglePassword()">
+                👁
+            </span>
+
+        </div>
+
+        <button type="submit" name="login">
+            Login
+        </button>
 
     </form>
 
-    <a href="index.php" class="back">← Back to Home</a>
+    <a href="index.php" class="back">
+        ← Back to Home
+    </a>
 
 </div>
+
+<script>
+
+function togglePassword(){
+
+    const password = document.getElementById("password");
+
+    if(password.type === "password"){
+        password.type = "text";
+    }else{
+        password.type = "password";
+    }
+
+}
+
+</script>
 
 </body>
 </html>

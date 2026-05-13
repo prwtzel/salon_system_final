@@ -11,7 +11,6 @@ if (!isset($_SESSION['admin'])) {
 
 include '../db.php';
 
-/* ✅ CHECK DB CONNECTION */
 if (!$conn) {
     die("Database connection failed: " . mysqli_connect_error());
 }
@@ -21,20 +20,23 @@ if (!$conn) {
 ========================= */
 if (isset($_GET['action']) && isset($_GET['id'])) {
 
-    $id = intval($_GET['id']); // 🔒 safe
+    $id = intval($_GET['id']);
     $action = $_GET['action'];
 
     if ($action == 'approve') {
         $status = 'Approved';
+
     } elseif ($action == 'cancel') {
         $status = 'Cancelled';
+
+    } elseif ($action == 'complete') {   // ✅ NEW
+        $status = 'Completed';
+
     } else {
         $status = 'Pending';
     }
 
-    if (!$conn->query("UPDATE appointments SET status='$status' WHERE id='$id'")) {
-        die("Update Error: " . $conn->error);
-    }
+    $conn->query("UPDATE appointments SET status='$status' WHERE id='$id'");
 
     header("Location: appointments.php");
     exit();
@@ -44,27 +46,58 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Appointments</title>
+<title>Appointments</title>
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <style>
-    body {
-        background: url('../assets/img/bg.jpg') no-repeat center center fixed;
-        background-size: cover;
-    }
+<style>
+body {
+    background: url('../assets/img/bg.jpg') no-repeat center center fixed;
+    background-size: cover;
+}
 
-    .overlay {
-        background: rgba(0,0,0,0.6);
-        min-height: 100vh;
-        padding: 20px;
-    }
+.overlay {
+    background: rgba(0,0,0,0.6);
+    min-height: 100vh;
+    padding: 20px;
+}
 
-    .card {
-        border-radius: 15px;
-        background: rgba(255,255,255,0.95);
-    }
-    </style>
+.card {
+    border-radius: 15px;
+    background: rgba(255,255,255,0.95);
+}
+
+/* MODAL */
+.modal-custom {
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.6);
+    z-index:999;
+}
+
+.modal-box {
+    background:white;
+    width:350px;
+    margin:15% auto;
+    padding:20px;
+    border-radius:12px;
+    text-align:center;
+}
+
+.modal-box button {
+    margin:10px 5px;
+    padding:8px 15px;
+    border:none;
+    border-radius:8px;
+}
+
+.btn-yes { background:#28a745; color:white; }
+.btn-no { background:#dc3545; color:white; }
+</style>
 </head>
 
 <body>
@@ -113,12 +146,7 @@ ORDER BY a.id DESC
 
 $result = $conn->query($query);
 
-if (!$result) {
-    die("Query Error: " . $conn->error);
-}
-
-if ($result->num_rows > 0):
-    while($row = $result->fetch_assoc()):
+while($row = $result->fetch_assoc()):
 ?>
 
 <tr>
@@ -131,30 +159,43 @@ if ($result->num_rows > 0):
     <td>
         <span class="badge bg-<?=
             $row['status'] == 'Pending' ? 'warning' :
-            ($row['status'] == 'Approved' ? 'success' : 'danger')
+            ($row['status'] == 'Approved' ? 'primary' :
+            ($row['status'] == 'Completed' ? 'success' : 'danger'))
         ?>">
             <?= $row['status'] ?>
         </span>
     </td>
 
     <td>
+
         <?php if ($row['status'] == 'Pending'): ?>
-            <a href="?action=approve&id=<?= $row['id'] ?>" class="btn btn-success btn-sm">Approve</a>
-            <a href="?action=cancel&id=<?= $row['id'] ?>" class="btn btn-danger btn-sm">Cancel</a>
+
+            <button class="btn btn-success btn-sm"
+                onclick="openModal('approve', <?= $row['id'] ?>)">
+                Approve
+            </button>
+
+            <button class="btn btn-danger btn-sm"
+                onclick="openModal('cancel', <?= $row['id'] ?>)">
+                Cancel
+            </button>
+
+        <?php elseif ($row['status'] == 'Approved'): ?>
+
+            <!-- ✅ COMPLETE BUTTON -->
+            <button class="btn btn-primary btn-sm"
+                onclick="openModal('complete', <?= $row['id'] ?>)">
+                Complete
+            </button>
+
         <?php else: ?>
             —
         <?php endif; ?>
+
     </td>
 </tr>
 
-<?php
-    endwhile;
-else:
-?>
-<tr>
-    <td colspan="7">No appointments found.</td>
-</tr>
-<?php endif; ?>
+<?php endwhile; ?>
 
 </tbody>
 </table>
@@ -165,5 +206,48 @@ else:
 
 </div>
 
+<!-- MODAL -->
+<div class="modal-custom" id="modal">
+    <div class="modal-box">
+        <h5 id="modalText">Are you sure?</h5>
+
+        <button class="btn-yes" id="yesBtn">Yes</button>
+        <button class="btn-no" onclick="closeModal()">No</button>
+    </div>
+</div>
+
+<script>
+let actionType = "";
+let actionId = "";
+
+function openModal(type, id){
+    actionType = type;
+    actionId = id;
+
+    let text = "";
+
+    if(type === "approve"){
+        text = "Approve this appointment?";
+    } 
+    else if(type === "cancel"){
+        text = "Cancel this appointment?";
+    }
+    else if(type === "complete"){
+        text = "Mark this appointment as completed?";
+    }
+
+    document.getElementById("modalText").innerText = text;
+    document.getElementById("modal").style.display = "block";
+}
+
+function closeModal(){
+    document.getElementById("modal").style.display = "none";
+}
+
+document.getElementById("yesBtn").onclick = function(){
+    window.location.href = "?action=" + actionType + "&id=" + actionId;
+};
+</script>
+
 </body>
-</html>
+</html> 
